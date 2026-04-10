@@ -1,0 +1,22 @@
+services:
+  scrying:
+    build: .
+    image: scrying-pool:latest
+    container_name: scrying-pool
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      HOST_PASSWORD: ${HOST_PASSWORD:-pyconde2026}
+      ROUND_DURATION: ${ROUND_DURATION:-30}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8000}
+      SNAPSHOT_FILE: /srv/snapshot.json
+      STORY_FILE: /srv/app/data/story.json
+    volumes:
+      # Mount for state persistence across container restarts (mid-session safety)
+      - scrying-state:/srv/state
+      # Optional: mount a custom story.json from the host without rebuilding
+      # - ./app/data/story.json:/srv/app/data/story.json:ro
+
+volumes:
+  scrying-state:

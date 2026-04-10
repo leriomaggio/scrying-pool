@@ -1,0 +1,231 @@
+{
+  "title": "The Quest for the Lost Talk",
+  "subtitle": "A PyConDE 2026 Saga",
+  "narrator_intro": "Tonight, we gather round the scrying pool to consult the audience. Twelve questions. One fate. Let the tale be told.",
+  "strategy_rotation": [
+    "most_popular",
+    "least_popular",
+    "random",
+    "second_place",
+    "host_choice",
+    "inverse_momentum",
+    "most_popular",
+    "random",
+    "least_popular",
+    "second_place",
+    "host_choice",
+    "most_popular"
+  ],
+  "rounds": [
+    {
+      "id": 1,
+      "format": "standard",
+      "poll_question": "Pick an ADJECTIVE to describe a heroic PyConista",
+      "category_label": "ADJECTIVE",
+      "story_slot": "HERO_ADJECTIVE",
+      "options": [
+        "sleep-deprived",
+        "caffeinated",
+        "majestic",
+        "bewildered",
+        "extremely online",
+        "grumpy but kind"
+      ]
+    },
+    {
+      "id": 2,
+      "format": "misleading_poll",
+      "poll_question": "What's the best Python web framework?",
+      "category_label": "FRAMEWORK",
+      "story_slot": "MOUNT",
+      "options": [
+        "Flask",
+        "Django",
+        "FastAPI",
+        "Bottle",
+        "Tornado",
+        "Pyramid"
+      ]
+    },
+    {
+      "id": 3,
+      "format": "misleading_poll",
+      "poll_question": "Tabs or spaces?",
+      "category_label": "HOT TAKE",
+      "story_slot": "BATTLE_CRY",
+      "options": [
+        "Tabs!",
+        "Spaces!",
+        "Whatever the linter says!",
+        "I use both and I'm not sorry!",
+        "Semicolons, actually!"
+      ]
+    },
+    {
+      "id": 4,
+      "format": "misleading_poll",
+      "poll_question": "Worst thing to find during a code review?",
+      "category_label": "PET PEEVE",
+      "story_slot": "MONSTER",
+      "options": [
+        "Spaghetti code",
+        "Global variables everywhere",
+        "Magic numbers",
+        "A TODO from 2019",
+        "An empty try/except",
+        "print('hello world debug')"
+      ]
+    },
+    {
+      "id": 5,
+      "format": "misleading_poll",
+      "poll_question": "Most important soft skill for developers?",
+      "category_label": "SOFT SKILL",
+      "story_slot": "MAGIC_SPELL",
+      "options": [
+        "Communication",
+        "Empathy",
+        "Patience",
+        "Collaboration",
+        "Saying 'no' politely"
+      ]
+    },
+    {
+      "id": 6,
+      "format": "standard",
+      "poll_question": "Pick a SILLY WORD",
+      "category_label": "SILLY WORD",
+      "story_slot": "WAR_CHANT",
+      "options": [
+        "Bamboozle!",
+        "Kerfuffle!",
+        "Yodel!",
+        "Boop!",
+        "Flabbergast!",
+        "Whoopsie-daisy!"
+      ]
+    },
+    {
+      "id": 7,
+      "format": "misleading_poll",
+      "poll_question": "Best conference fuel?",
+      "category_label": "FUEL",
+      "story_slot": "WEAPON",
+      "options": [
+        "Pretzels",
+        "Club-Mate",
+        "Coffee",
+        "Gummy bears",
+        "Currywurst",
+        "Pineapple pizza"
+      ]
+    },
+    {
+      "id": 8,
+      "format": "standard",
+      "poll_question": "Pick a NUMBER",
+      "category_label": "NUMBER",
+      "story_slot": "ENEMY_COUNT",
+      "options": [
+        "three",
+        "seven",
+        "forty-two",
+        "one hundred",
+        "nine thousand",
+        "minus one"
+      ]
+    },
+    {
+      "id": 9,
+      "format": "misleading_poll",
+      "poll_question": "What do you mass-delete on Fridays?",
+      "category_label": "FRIDAY RITUAL",
+      "story_slot": "TREASURE",
+      "options": [
+        "Old git branches",
+        "Slack notifications",
+        "Docker images",
+        "Jira tickets",
+        "Unread emails",
+        "Stack Overflow tabs"
+      ]
+    },
+    {
+      "id": 10,
+      "format": "standard",
+      "poll_question": "Pick a PROP for our hero to carry",
+      "category_label": "PROP",
+      "story_slot": "RELIC",
+      "options": [
+        "a rubber duck",
+        "a mechanical keyboard",
+        "a single AirPod",
+        "a laminated cheat sheet",
+        "a vintage Tamagotchi",
+        "a stress ball shaped like Python"
+      ]
+    },
+    {
+      "id": 11,
+      "format": "misleading_poll",
+      "poll_question": "Your deployment ritual?",
+      "category_label": "DEPLOY MOVE",
+      "story_slot": "FINAL_MOVE",
+      "options": [
+        "pray and push",
+        "run the tests twice",
+        "blame the intern",
+        "roll back immediately",
+        "deploy and run",
+        "ship it on Friday"
+      ]
+    },
+    {
+      "id": 12,
+      "format": "standard",
+      "poll_question": "Pick a VICTORY EMOTE",
+      "category_label": "VICTORY EMOTE",
+      "story_slot": "VICTORY_DANCE",
+      "options": [
+        "the floss",
+        "jazz hands",
+        "a silent wizardly bow",
+        "a triumphant cackle",
+        "a humble shrug",
+        "a slow-motion fist pump"
+      ]
+    }
+  ],
+  "story_template": [
+    "Once upon a Lightning Talk session at PyConDE 26, a {HERO_ADJECTIVE} PyConista awoke in their hotel room to a horror beyond reckoning: their slides had vanished.",
+    "Desperate and determined, they mounted their trusty {MOUNT}, the fastest steed in all the Pythonic Wastes, and set forth on a quest, raising a fist to the sky and bellowing '{BATTLE_CRY}' as their war cry. At the crossroads, Johannes the Cartographer squinted at a crinkled map, pointed vaguely north, and wished them luck.",
+    "Deep in the Cave of Legacy Code, guarded by Sebastian the Dark Archivist, they came face to face with a hideous {MONSTER}. The beast hissed and snarled. Our hero raised their staff and cast a devastating spell of {MAGIC_SPELL}, and the monster reeled, but it was not enough.",
+    "With a final war-chant of '{WAR_CHANT}', our hero drew their mighty {WEAPON} and charged, felling exactly {ENEMY_COUNT} shadow-minions in a single swing, while Valerio the Chance Caster rolled his enchanted dice and whispered 'determinism is for compilers'.",
+    "At the summit of the Mountain of Merge Conflicts, Paula the Chromamancer blessed the path in shades of grey, and our hero unearthed the legendary hoard of {TREASURE}, clutching tight their most prized relic: {RELIC}. But first, at the Bridge of Broken Builds, Alex H. Potter, known across the realm as Alex the Wizard, planted his staff, faced down a shadow of corrupted commits, and thundered 'YOU SHALL NOT PASS… this PR without a code review!'",
+    "And when the Final Boss emerged from the Keep of the Dark Archivist, breath reeking of unmerged pull requests, Lisa the Timekeeper raised a glowing hourglass and cried 'you have exactly one lightning talk's worth of time!' Our hero's strategy was clear. They would, quite simply, {FINAL_MOVE}.",
+    "It worked. (Somehow.) The slides were recovered. Peace returned to the land of PyConDE. The crowd roared, and our victorious hero celebrated with {VICTORY_DANCE}, while Florian the Wordsmith nodded and whispered: 'the best spells are the ones nobody sees coming.'",
+    "The End."
+  ],
+  "highlighted_characters": [
+    "Sebastian the Dark Archivist",
+    "Johannes the Cartographer",
+    "Valerio the Chance Caster",
+    "Paula the Chromamancer",
+    "Alex H. Potter",
+    "Alex the Wizard",
+    "Lisa the Timekeeper",
+    "Florian the Wordsmith"
+  ],
+  "credits": {
+    "inspired_by": "The Mystery Constraint Cards universe",
+    "fantasy_personas_cameo": [
+      "Sebastian the Dark Archivist",
+      "Johannes the Cartographer",
+      "Valerio the Chance Caster",
+      "Paula the Chromamancer",
+      "Alex H. Potter, a.k.a. Alex the Wizard",
+      "Lisa the Timekeeper",
+      "Florian the Wordsmith"
+    ]
+  }
+}

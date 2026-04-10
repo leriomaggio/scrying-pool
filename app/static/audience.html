@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>The Scrying Pool</title>
+<link rel="stylesheet" href="/static/shared.css">
+<style>
+  body { padding: 1rem; max-width: 520px; margin: 0 auto; }
+  .brand { text-align: center; margin: 0.4rem 0 1.2rem; }
+  .brand h1 { font-size: 1.4rem; margin: 0; color: var(--accent); letter-spacing: 0; font-weight: 700; }
+  .brand p  { margin: 0.1rem 0; color: var(--ink-dim); font-size: 0.85rem; font-style: italic; }
+  .q { font-family: var(--sans); font-size: 1.4rem; line-height: 1.3; margin: 0.3rem 0 0.8rem; font-weight: 600; }
+  .cat-tag { margin-bottom: 0.7rem; }
+  .voted-note { text-align: center; margin-top: 0.4rem; color: var(--good); font-size: 0.9rem; font-weight: 600; }
+  .idle { text-align: center; padding: 2rem 0.5rem; color: var(--ink-dim); }
+  .idle h2 { color: var(--accent); font-family: var(--sans); font-weight: 700; }
+  .footer { text-align: center; margin: 2rem 0 0.5rem; color: var(--ink-dim); font-size: 0.75rem; }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <h1>✦ THE SCRYING POOL ✦</h1>
+    <p>gaze in. cast your vote.</p>
+  </div>
+
+  <div id="root"></div>
+
+  <p class="footer">A PyConDE &amp; PyData 26 audience ritual</p>
+
+<script>
+(() => {
+  const root = document.getElementById('root');
+
+  // Stable per-device id so re-votes replace previous votes cleanly
+  let clientId = localStorage.getItem('scrying_cid');
+  if (!clientId) {
+    clientId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now();
+    localStorage.setItem('scrying_cid', clientId);
+  }
+
+  let ws;
+  let state = null;
+  let selectedIndex = null;
+  let lastRoundId = null;
+  let countdownTimer = null;
+  let deadlineTimeout = null;
+
+  function wsUrl() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${proto}://${location.host}/ws/audience`;
+  }
+
+  function connect() {
+    ws = new WebSocket(wsUrl());
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'state') {
+        state = msg.data;
+        if (state.round && state.round.id !== lastRoundId) {
+          selectedIndex = null;
+          lastRoundId = state.round.id;
+        }
+        render();
+      }
+    };
+    ws.onclose = () => setTimeout(connect, 1500);
+  }
+
+  function votingClosed() {
+    // Source of truth: the server-provided closes_at on the current round.
+    // If we're past it, the server will reject votes anyway; don't let the
+    // UI pretend otherwise.
+    if (!state || !state.round || !state.round.closes_at) return false;
+    return Date.now() >= state.round.closes_at * 1000;
+  }
+
+  function sendVote(idx) {
+    if (!ws || ws.readyState !== 1) return;
+    if (votingClosed()) return;  // defensive: buttons should be disabled already
+    ws.send(JSON.stringify({ type: 'vote', option_index: idx, client_id: clientId }));
+    selectedIndex = idx;
+    render();
+  }
+
+  function render() {
+    if (!state) { root.innerHTML = '<div class="card idle">Connecting to the pool…</div>'; return; }
+
+    if (state.phase === 'final') {
+      root.innerHTML = `
+        <div class="card idle">
+          <h2>The tale is told.</h2>
+          <p>Turn your attention to the big screen…</p>
+        </div>`;
+      return;
+    }
+
+    if (state.phase === 'waiting' || !state.round) {
+      root.innerHTML = `
+        <div class="card idle">
+          <h2>Standing by…</h2>
+          <p>The next vision will appear after the talk.</p>
+          ${state.total_rounds ? `<p class="mono">Round ${state.round_index + 1} / ${state.total_rounds}</p>` : ''}
+        </div>`;
+      return;
+    }
+
+    const r = state.round;
+
+    if (state.phase === 'voting') {
+      const hasVoted = selectedIndex !== null;
+      const closesAt = r.closes_at ? r.closes_at * 1000 : null;
+      const closed = votingClosed();
+
+      root.innerHTML = `
+        <div class="card">
+          <div class="head">
+            <span class="title">Round ${state.round_index + 1} / ${state.total_rounds}</span>
+            <span class="round">${r.total_votes} vote${r.total_votes === 1 ? '' : 's'}</span>
+          </div>
+          <div class="cat-tag"><span class="tag">${r.category_label}</span></div>
+          <div class="q">${r.poll_question}</div>
+          <div id="countdown" class="countdown">--</div>
+          <div style="height: 0.8rem"></div>
+          <div id="options"></div>
+          ${closed
+            ? `<div class="voted-note closed">✦ Time's up. The pool seals its answer. ✦</div>`
+            : hasVoted
+              ? `<div class="voted-note">✦ Vote cast. You may change it until time runs out. ✦</div>`
+              : ''}
+          ${hasVoted || closed
+            ? `<div style="height: 0.8rem"></div><div id="live-bars" class="bars"></div>`
+            : ''}
+        </div>`;
+
+      const optsEl = document.getElementById('options');
+      r.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn'
+          + (selectedIndex === i ? ' selected' : '')
+          + (closed ? ' disabled' : '');
+        btn.innerHTML = `<span>${opt}</span>${selectedIndex === i ? '<span>✓</span>' : ''}`;
+        btn.disabled = closed;
+        if (!closed) btn.onclick = () => sendVote(i);
+        optsEl.appendChild(btn);
+      });
+
+      if (hasVoted || closed) {
+        renderBars(document.getElementById('live-bars'), r);
+      }
+
+      // Countdown. When it hits 0 we re-render once so the option buttons
+      // switch to their disabled state, without waiting for the next
+      // server-pushed state update.
+      clearInterval(countdownTimer);
+      clearTimeout(deadlineTimeout);
+      const cdEl = document.getElementById('countdown');
+      let rerenderedAtZero = closed;
+      function tick() {
+        if (!closesAt) { cdEl.textContent = '--'; return; }
+        const left = Math.max(0, Math.ceil((closesAt - Date.now()) / 1000));
+        cdEl.textContent = `${left}s`;
+        cdEl.classList.toggle('urgent', left > 0 && left <= 5);
+        if (left <= 0) {
+          clearInterval(countdownTimer);
+          if (!rerenderedAtZero) {
+            rerenderedAtZero = true;
+            render();
+          }
+        }
+      }
+      tick();
+      countdownTimer = setInterval(tick, 250);
+      // Single-shot timeout aimed at the exact deadline. Browsers throttle
+      // setInterval aggressively in background tabs, but a direct setTimeout
+      // to a specific instant is a lot more reliable. This is belt-and-braces
+      // with the tick() above.
+      if (closesAt && !closed) {
+        const msUntilClose = Math.max(0, closesAt - Date.now()) + 50;
+        deadlineTimeout = setTimeout(() => { render(); }, msUntilClose);
+      }
+      return;
+    }
+
+    if (state.phase === 'revealed') {
+      clearInterval(countdownTimer);
+      clearTimeout(deadlineTimeout);
+      const winIdx = r.winning_index;
+      const winWord = winIdx != null ? r.options[winIdx] : '???';
+      root.innerHTML = `
+        <div class="card">
+          <div class="head">
+            <span class="title">Round ${state.round_index + 1} / ${state.total_rounds}</span>
+            <span class="round">${r.total_votes} votes</span>
+          </div>
+          <div class="cat-tag"><span class="tag">${r.category_label}</span></div>
+          <div class="q">${r.poll_question}</div>
+          <div style="height: 0.6rem"></div>
+          <div class="reveal-word">${winWord}</div>
+          ${r.strategy_label ? `<div class="reveal-strategy">· ${r.strategy_label} ·<br><small>${r.strategy_flavour || ''}</small></div>` : ''}
+          <div style="height: 1rem"></div>
+          <div id="final-bars" class="bars"></div>
+        </div>`;
+      renderBars(document.getElementById('final-bars'), r);
+    }
+  }
+
+  function renderBars(host, r) {
+    const max = Math.max(1, ...r.tally);
+    host.innerHTML = r.options.map((opt, i) => {
+      const pct = Math.round((r.tally[i] / max) * 100);
+      const isWinner = r.winning_index === i;
+      return `
+        <div class="bar-row">
+          <div class="bar-label">${opt}</div>
+          <div class="bar-track"><div class="bar-fill ${isWinner ? 'winner' : ''}" style="width:${pct}%"></div></div>
+          <div class="bar-count">${r.tally[i]}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // When a tab/window regains focus after being throttled, re-render
+  // immediately so `votingClosed()` is recomputed against the current clock.
+  // This fixes the case where background tabs show stale live buttons after
+  // the deadline has already passed.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state) render();
+  });
+  window.addEventListener('focus', () => { if (state) render(); });
+
+  connect();
+})();
+</script>
+</body>
+</html>

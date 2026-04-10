@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Scrying Pool: Host Entry</title>
+<link rel="stylesheet" href="/static/shared.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+  .login { max-width: 420px; width: 100%; text-align: center; }
+  .login h1 { color: var(--accent); letter-spacing: 0; }
+  .login p { color: var(--ink-dim); font-style: italic; margin-bottom: 1.5rem; }
+  input[type=password] {
+    width: 100%; padding: 0.9rem 1rem; border-radius: 0;
+    background: var(--white); color: var(--ink);
+    border: 2px solid var(--border-strong); font-size: 1.05rem;
+    margin-bottom: 0.8rem;
+  }
+  input[type=password]:focus { outline: none; border-color: var(--blue); }
+  .btn { width: 100%; padding: 0.9rem; font-size: 1rem; }
+</style>
+</head>
+<body>
+  <form class="card login" method="post" action="/host/login">
+    <h1>✦ HOST ENTRY ✦</h1>
+    <p>Speak the password to command the pool.</p>
+    <input type="password" name="password" placeholder="Password" autofocus required>
+    <button type="submit" class="btn primary">Enter</button>
+    <!--ERROR-->
+  </form>
+</body>
+</html>
