@@ -6,13 +6,13 @@ An audience engagement game for the PyConDE 2026 Lightning Talks.
 
 Single process FastAPI app with WebSocket broadcast fan-out. Three views are served by the same backend:
 
-* `/` is the audience view. Mobile first. Shows the current poll, a 30 second countdown, and a live updating bar chart of votes.
+* `/` is the audience view. Mobile first. Shows the current poll, a configurable countdown (default 15 seconds, adjustable 5-60s from the host panel), and a live updating bar chart of votes.
 * `/screen` is the big-screen / projector view. Shows the same poll at large scale plus a QR code to join, the dramatic winning word reveal, and the final illustrated story.
-* `/host` is a password-protected dashboard with the current round's *secret* story slot, the *secret* active strategy, a manual override for both the strategy and the winning word, a live preview of the final story as it fills in round by round, and controls to advance the game.
+* `/host` is a password-protected dashboard with a story selector, round duration slider, the current round's *secret* story slot, the *secret* active strategy, a manual override for both the strategy and the winning word, a live preview of the final story as it fills in round by round, a popup modal to read the full story, and controls to advance the game.
 
 State lives in-memory in a `GameEngine` instance. On every phase transition the engine writes a small JSON snapshot to disk, so a container restart mid-session can resume where it left off. No database, no Redis, no queue.
 
-The rounds, the poll questions, the word options, and the quest template all live in a single editable file: `app/data/story.json`. You can drop in a completely different story without touching any code.
+The game supports multiple stories for multi-day conferences. Each story lives in its own JSON file under `app/data/` (e.g. `story1.json` for Day 1, `story2.json` for Day 2). The host selects which story to play from a dropdown before starting the game. You can add new stories by dropping more `story*.json` files into that folder without touching any code.
 
 ## Project layout
 
@@ -23,7 +23,8 @@ scrying-pool/
 │   ├── main.py              # FastAPI app, WebSocket hub, routes, auth
 │   ├── game.py              # GameEngine, Round, strategies, state machine
 │   ├── data/
-│   │   └── story.json       # The quest, the rounds, the rotation
+│   │   ├── story1.json      # Day 1: The Curse of the Missing Wi-Fi (5 rounds)
+│   │   └── story2.json      # Day 2: The Quest for the Lost Talk (10 rounds)
 │   └── static/
 │       ├── audience.html    # Mobile view
 │       ├── screen.html      # Projector view (with QR)
@@ -35,6 +36,7 @@ scrying-pool/
 │   └── Testing.md           # Local testing, simulator usage, dress rehearsal
 ├── simulate_audience.py     # Headless load generator / rehearsal tool
 ├── smoke_test.py            # Engine-level smoke test (no server)
+├── e2e_simulation.py        # Full server + host + audience e2e test
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
@@ -99,10 +101,11 @@ Caddy does this automatically. Cloudflare requires Pro tier or above for WebSock
 | Variable | Default | Notes |
 |---|---|---|
 | `HOST_PASSWORD` | `letmein` | **Change this.** Password for `/host`. |
-| `STORY_FILE` | `app/data/story.json` | Swap to a different template if you want. |
-| `ROUND_DURATION` | `30` | Seconds per voting round. |
-| `SNAPSHOT_FILE` | `/srv/snapshot.json` | Written on phase transitions for restart resume. |
+| `DEFAULT_STORY` | `story1` | Which story to load on startup (without `.json`). The host can switch stories from the dashboard before the game starts. |
+| `SNAPSHOT_PATH` | `/tmp/scrying_snapshot.json` | Written on phase transitions for restart resume. |
 | `PUBLIC_URL` | `http://localhost:8000` | URL rendered in the QR code on the projector. Set to `https://scrying.pycon.de` for prod. |
+
+Round duration is no longer an environment variable. It is set from the host dashboard (5-60 seconds, default 15) and locked once the game starts.
 
 ### Health check
 
@@ -110,12 +113,12 @@ Caddy does this automatically. Cloudflare requires Pro tier or above for WebSock
 
 ## Running the game: host cheat sheet
 
-1. **Before the session:** open `/host`, log in. You will see the full round summary on the right with the hidden story slots (`MOUNT`, `MONSTER`, `MAGIC_SPELL`, …) and the rotated strategy for each round. The audience sees none of this.
-2. **Between talks:** press **Start Round**. The audience view switches to the current poll, the 30s countdown starts, and votes begin flowing into the live bar chart on all three views.
+1. **Before the session:** open `/host`, log in. Select the story for today from the **Story** dropdown (Day 1 = story1, 5 rounds; Day 2 = story2, 10 rounds). Adjust the **Round duration** slider if you want something other than the default 15 seconds. Both controls lock once the first round starts; press **Reset Game** if you need to change them later.
+2. **Between talks:** press **Start Round**. The audience view switches to the current poll, the countdown starts, and votes begin flowing into the live bar chart on all three views.
 3. **Mid-voting, optional:** if a round is "Host's Wild Card" strategy, pick any option from the **Manual Override** buttons. You can also override the strategy itself from the dropdown if you want to tune the comedy on the fly.
 4. **When time is up (or early):** press **Reveal Winner**. The big screen does the dramatic reveal. The winning word appears in gold, the strategy is named ("The Underdog"), and the crowd gets the punchline of "wait, the *least* popular one won?"
-5. **Advance:** press **Next Round →**. Repeat for all 12 rounds.
-6. **Grand finale:** after the last reveal, press **Show Final Story**. The big screen switches to the full rendered quest, ready for you to read aloud in your most dramatic wizard voice. Every word the audience filled in is shown in blue and bold, every recurring fantasy character is shown in blue and italic, so the climax is easy to read across the room.
+5. **Advance:** press **Next Round ->**. Repeat for all rounds.
+6. **Grand finale:** after the last reveal, press **Show Final Story**. The big screen switches to the full rendered quest. Click **Read Story** to open a scrollable popup with the complete story on your own screen, ready for you to read aloud in your most dramatic wizard voice. Every word the audience filled in is shown in blue and bold, every recurring fantasy character is shown in blue and italic, so the climax is easy to read across the room.
 
 ## Testing without deploying
 
@@ -125,13 +128,14 @@ For multi-user testing, stress tests, and dress rehearsals, see [`docs/Testing.m
 
 For deployment-facing questions ("will this handle a thousand people?", "what does the server need?", "why WebSockets?", "what's the Wi-Fi story?"), see [`docs/Performance.md`](docs/Performance.md). It explains the coalesced-broadcast architecture, documents the measured performance at 500 and 1000 concurrent voters, and lists the deployment gotchas (WebSocket upgrade headers, single uvicorn worker, snapshot volume persistence).
 
-## Customising the story
+## Customising the stories
 
-Everything is in `app/data/story.json`:
+Each story is a JSON file in `app/data/` named `story*.json`. The game auto-discovers all matching files on startup. Each file contains:
 
+* `title` and `subtitle`: shown on screen and in the host's story popup modal header.
 * `rounds[]`: each round has a `format` (`standard` or `misleading_poll`), the `poll_question` shown to the audience, the secret `story_slot` it fills, the `category_label` shown as a tag ("NOUN", "HOT TAKE"), and 5 or 6 `options`.
-* `strategy_rotation[]`: one strategy per round, cycles if shorter than rounds. Available: `most_popular`, `least_popular`, `random`, `second_place`, `host_choice`, `inverse_momentum`.
+* `strategy_rotation[]`: one strategy per round, cycles if shorter than rounds. Available: `most_popular`, `least_popular`, `random`, `second_place`, `host_choice`, `inverse_momentum`. Story1 uses all `most_popular` (audience always wins); Story2 uses a mixed rotation for chaos.
 * `story_template[]`: array of paragraphs. Use `{SLOT_NAME}` placeholders that match the `story_slot` values in the rounds.
 * `highlighted_characters[]`: list of recurring fantasy character names that should be emphasised in blue italic on the final story screen.
 
-Keep round count between 10 and 12. Fewer feels thin; more and the audience attention drifts.
+The two bundled stories are connected: Day 1 ends with a cliffhanger, Day 2 opens as a sequel. Round counts can vary per story (5 for a quick session, 10 for a longer one).

@@ -102,14 +102,25 @@ Concrete numbers from a thousand-voter stress test on a single laptop core, with
 
 ## Smoke test script
 
-There is also a standalone `smoke_test.py` in the repository root that exercises the game engine directly (no WebSocket, no server) and verifies every strategy, the full twelve-round flow, the snapshot round-trip, the host-override path, and the reset path. It takes about a second to run and is a good sanity check before any change to `game.py` or `story.json`:
+There is also a standalone `smoke_test.py` in the repository root that exercises the game engine directly (no WebSocket, no server) and verifies every strategy, the full game flow for both stories, the snapshot round-trip (including round duration), the host-override path, story switching, strategy rotation correctness, duration control, late vote rejection, and the reset path. It takes about a second to run and is a good sanity check before any change to `game.py` or the story JSON files:
 
 ```bash
 python smoke_test.py
 ```
 
-It should print a tidy list of passing assertions and finish with "All smoke tests passed. The pool is ready." If anything fails the script exits with a non-zero status and a clear error.
+It should print a tidy list of passing assertions and finish with "All tests passed!" If anything fails the script exits with a non-zero status and a clear error.
+
+## End-to-end simulation
+
+For a fully automated test that exercises the real HTTP/WebSocket stack, `e2e_simulation.py` starts the server, logs in as host, connects simulated audience voters, and drives through both stories automatically. It verifies strategy rotation, vote fan-out, story switching, and final story rendering with real network traffic:
+
+```bash
+pip install websockets
+python e2e_simulation.py
+```
+
+This spins up 20 voters for Story 1 (5 rounds) and 30 voters for Story 2 (10 rounds), drives the host through every round, and prints the final rendered stories. The whole run takes about thirty seconds.
 
 ## Dress rehearsal checklist
 
-A realistic end-to-end rehearsal looks like this. Start the server with a deliberately short round duration (say ten seconds) so you can rip through all twelve rounds quickly: `ROUND_DURATION=10 HOST_PASSWORD=letmein uvicorn app.main:app --port 8000`. Open `/screen` and `/host` in browser windows on two monitors if you have them, log in to the host dashboard, and in a second terminal launch the simulator with a moderate crowd and chaos enabled: `python simulate_audience.py --voters 50 --chaos`. Then run through the full twelve-round sequence (Start Round, watch the bars, Reveal Winner, watch the reveal, Next Round) twelve times, and end with Show Final Story. The whole dress rehearsal takes about four minutes and will expose anything unexpected about round ordering, strategy rotation, story slot mapping, or the final story render.
+A realistic end-to-end rehearsal looks like this. Start the server with `HOST_PASSWORD=letmein uvicorn app.main:app --port 8000`. Open `/screen` and `/host` in browser windows on two monitors if you have them, log in to the host dashboard, select the story for today, and set the round duration to something short (say 5 seconds) using the slider. In a second terminal launch the simulator with a moderate crowd and chaos enabled: `python simulate_audience.py --voters 50 --chaos`. Then run through the full sequence (Start Round, watch the bars, Reveal Winner, watch the reveal, Next Round) for all rounds, and end with Show Final Story. Click "Read Story" to verify the popup shows the correct story with all slots filled. For a two-day conference rehearsal, reset the game after Story 1 and switch to Story 2 to run through both. The whole dress rehearsal takes about four minutes per story and will expose anything unexpected about round ordering, strategy rotation, story slot mapping, or the final story render.

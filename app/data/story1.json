@@ -1,0 +1,111 @@
+{
+  "title": "The Curse of the Missing Wi-Fi",
+  "subtitle": "A PyConDE 2026 Interlude, Chapter I",
+  "narrator_intro": "Something stirs beneath the conference hall. Five questions. One mystery. Let the scrying pool reveal what happened below.",
+  "strategy_rotation": [
+    "most_popular",
+    "most_popular",
+    "most_popular",
+    "most_popular",
+    "most_popular"
+  ],
+  "rounds": [
+    {
+      "id": 1,
+      "format": "misleading_poll",
+      "poll_question": "What's the best Python library for data science?",
+      "category_label": "LIBRARY",
+      "story_slot": "CREATURE",
+      "options": [
+        "pandas",
+        "NumPy",
+        "scikit-learn",
+        "matplotlib",
+        "polars",
+        "TensorFlow"
+      ]
+    },
+    {
+      "id": 2,
+      "format": "misleading_poll",
+      "poll_question": "What's the most overrated tech buzzword?",
+      "category_label": "BUZZWORD",
+      "story_slot": "MAGIC_TOOL",
+      "options": [
+        "AI",
+        "blockchain",
+        "synergy",
+        "Web3",
+        "disruptive",
+        "metaverse"
+      ]
+    },
+    {
+      "id": 3,
+      "format": "misleading_poll",
+      "poll_question": "What do you shout when your code finally compiles?",
+      "category_label": "REACTION",
+      "story_slot": "INCANTATION",
+      "options": [
+        "HALLELUJAH!",
+        "It works?!",
+        "Don't touch anything!",
+        "Ship it!",
+        "I am a genius!",
+        "Why does this work?!"
+      ]
+    },
+    {
+      "id": 4,
+      "format": "misleading_poll",
+      "poll_question": "Best conference souvenir?",
+      "category_label": "SOUVENIR",
+      "story_slot": "SECRET_INGREDIENT",
+      "options": [
+        "stickers",
+        "free t-shirts",
+        "tote bags",
+        "lanyard collections",
+        "business cards",
+        "branded socks"
+      ]
+    },
+    {
+      "id": 5,
+      "format": "misleading_poll",
+      "poll_question": "Your go-to excuse for missing a deadline?",
+      "category_label": "EXCUSE",
+      "story_slot": "VICTORY_PHRASE",
+      "options": [
+        "It worked on my machine",
+        "I was blocked",
+        "The requirements changed",
+        "I forgot to save",
+        "My internet went down",
+        "I was refactoring"
+      ]
+    }
+  ],
+  "story_template": [
+    "It happened without warning: the Wi-Fi died. A collective gasp rippled through the conference hall. Valerio the Chance Caster, mid-roll of his enchanted dice, froze. 'This is no ordinary outage,' he whispered. 'Someone has unleashed a {CREATURE} upon the router.'",
+    "Johannes the Timekeeper checked his watch, checked it again, and announced with clockwork precision: 'We have exactly twelve minutes before the next talk. Someone must go below.' He thrust a glowing {MAGIC_TOOL} into the nearest volunteer's hands. 'Take this. You will need it.'",
+    "Down in the server dungeon, the air hummed with cursed packets. The volunteer found the source: a tangle of corrupted cables and a glowing rune that pulsed with eldritch light. Following an ancient sysadmin ritual, they typed '{INCANTATION}' into the terminal and held their breath.",
+    "Lisa, Leader of Team Other, appeared from the shadows. 'Ah yes,' she said, examining the blinking lights with a knowing look. 'I have seen this before. The router needs {SECRET_INGREDIENT}. Do not ask how I know. I lead... the other team.' She smiled mysteriously and vanished.",
+    "With trembling hands, the volunteer applied the fix, leaned close to the dying router, and whispered: '{VICTORY_PHRASE}'. A hum. A flicker. The Wi-Fi returned. Five hundred developers reconnected simultaneously and the internet groaned under the weight of their Stack Overflow tabs.",
+    "But as the lights steadied, a new message blinked across every screen in the building: 'THE SLIDES WERE NEVER YOURS. THE QUEST BEGINS TOMORROW.' Valerio the Chance Caster looked up from his dice and murmured: 'Well... that is not good.'",
+    "To be continued..."
+  ],
+  "highlighted_characters": [
+    "Valerio the Chance Caster",
+    "Johannes the Timekeeper",
+    "Lisa, Leader of Team Other"
+  ],
+  "credits": {
+    "inspired_by": "The Mystery Constraint Cards universe",
+    "fantasy_personas_cameo": [
+      "Valerio the Chance Caster",
+      "Johannes the Timekeeper",
+      "Lisa, Leader of Team Other"
+    ]
+  }
+}

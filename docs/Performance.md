@@ -4,7 +4,7 @@ This document exists for the person deploying **The Scrying Pool** to `scrying.p
 
 ## Expected load
 
-A PyConDE Lightning Talks session fills the main auditorium. A realistic optimistic ceiling is around one thousand concurrent audience members on their phones, and a conservative baseline is five hundred. Everyone who joins holds one WebSocket connection open for the entire session (roughly forty-five minutes) and casts one vote per round across twelve rounds. The two other clients are the projector view (one or two browser windows on the beamer laptop) and the host dashboard (one browser window on the host's laptop). So in aggregate: one thousand long-lived audience sockets, one or two screen sockets, one host socket, twelve state-transition events, and somewhere around twelve thousand vote messages over forty-five minutes.
+A PyConDE Lightning Talks session fills the main auditorium. A realistic optimistic ceiling is around one thousand concurrent audience members on their phones, and a conservative baseline is five hundred. Everyone who joins holds one WebSocket connection open for the entire session (roughly forty-five minutes) and casts one vote per round across five to ten rounds depending on the story. The two other clients are the projector view (one or two browser windows on the beamer laptop) and the host dashboard (one browser window on the host's laptop). So in aggregate: one thousand long-lived audience sockets, one or two screen sockets, one host socket, ten to twenty state-transition events (depending on the story), and somewhere around five to ten thousand vote messages over forty-five minutes.
 
 None of that is large by web-app standards. What *is* interesting is that every vote wants to become a real-time update visible to every other phone in the room. That is the thing the architecture has to get right.
 
@@ -22,7 +22,7 @@ Phase transitions bypass the coalescing delay. When the host presses Start Round
 
 Broadcasts serialise the state payload exactly once per broadcast, not once per client. The old code called `ws.send_json()` for every client, which re-ran `json.dumps` on every send: a thousand JSON encodings per broadcast for a thousand-person room. The new code calls `json.dumps` once and then fans the resulting string out via `ws.send_text()` to every client using `asyncio.gather`, so one slow client cannot head-of-line-block the others.
 
-Snapshot persistence only writes to disk on phase transitions (start, reveal, next, reset, override), not on every vote. In-flight votes inside a single round are ephemeral anyway: if the process crashes mid-voting the round just restarts cleanly with the same question and options. This drops the disk write rate from roughly thirty-three writes per second during a busy round down to about twelve writes across an entire twelve-round game.
+Snapshot persistence only writes to disk on phase transitions (start, reveal, next, reset, override), not on every vote. The snapshot also records the active story key and round duration so a restart resumes with the correct story selected. In-flight votes inside a single round are ephemeral anyway: if the process crashes mid-voting the round just restarts cleanly with the same question and options. This drops the disk write rate from roughly thirty-three writes per second during a busy round down to about ten to twenty writes across an entire game.
 
 There is also a `voting_watchdog` task that nudges the dirty flag once per second while a round is voting, so audience countdown timers stay in sync even during quiet moments when no new votes are arriving. The flusher coalesces this nudge with any vote-triggered dirty flags, so it does not add extra broadcasts.
 
@@ -66,7 +66,7 @@ Make sure the reverse proxy in front of the container forwards WebSocket upgrade
 
 Wire `/healthz` into whatever platform liveness probe you have. It returns a small JSON document with the current phase and round index and does not need authentication.
 
-The `SNAPSHOT_FILE` path (default `/srv/snapshot.json`) should live on a volume that survives container restarts. If the container restarts mid-session (say because the host runs `docker compose restart` to re-read `.env`) the game will resume on the round it was in before, with votes cleared for the in-progress round and all previously-revealed rounds intact. Losing the snapshot file during a live session would reset the game to round one, which you do not want.
+The `SNAPSHOT_PATH` path (default `/tmp/scrying_snapshot.json`) should live on a volume that survives container restarts. If the container restarts mid-session (say because the host runs `docker compose restart` to re-read `.env`) the game will resume on the round it was in before, with votes cleared for the in-progress round and all previously-revealed rounds intact. Losing the snapshot file during a live session would reset the game to round one, which you do not want.
 
 ## When this guidance stops being true
 

@@ -113,10 +113,18 @@ class Round:
 
 
 class GameEngine:
-    def __init__(self, story_path: Path, round_duration_s: int = 30):
-        self.story_path = Path(story_path)
+    """Central game engine.
+
+    Accepts either a story dict or a Path to a story JSON file.
+    """
+
+    def __init__(self, story: dict | Path | str, round_duration_s: int = 15):
+        if isinstance(story, (str, Path)):
+            with Path(story).open("r", encoding="utf-8") as f:
+                story = json.load(f)
+        self.story: dict[str, Any] = story
         self.round_duration_s = round_duration_s
-        self._load_story()
+        self._init_rounds()
         self.phase: GamePhase = GamePhase.WAITING
         self.current_round_index: int = 0
         self.version: int = 0  # monotonic, incremented on every state change
@@ -124,9 +132,8 @@ class GameEngine:
 
     # ---------- story loading ----------
 
-    def _load_story(self) -> None:
-        with self.story_path.open("r", encoding="utf-8") as f:
-            self.story: dict[str, Any] = json.load(f)
+    def _init_rounds(self) -> None:
+        """Build Round objects from the current story data."""
         rotation = self.story["strategy_rotation"]
         rounds_raw = self.story["rounds"]
         self.rounds: list[Round] = []
@@ -141,6 +148,24 @@ class GameEngine:
                 options=list(r["options"]),
                 strategy=Strategy(strat_name),
             ))
+
+    def switch_story(self, story: dict) -> None:
+        """Load a new story and fully reset the game.
+
+        Only valid before the game has started (WAITING phase, round 0).
+        The caller should enforce this guard.
+        """
+        self.story = story
+        self._init_rounds()
+        self.phase = GamePhase.WAITING
+        self.current_round_index = 0
+        self.version += 1
+
+    # ---------- game-hasn't-started check ----------
+
+    def game_has_started(self) -> bool:
+        """True once any round has ever been opened (votes cast, etc.)."""
+        return any(r.opened_at is not None for r in self.rounds)
 
     # ---------- state helpers ----------
 
@@ -253,7 +278,7 @@ class GameEngine:
         tally = r.tally()
         n = len(r.options)
 
-        # Edge case: no votes at all → random
+        # Edge case: no votes at all -> random
         if sum(tally) == 0:
             return random.randrange(n)
 
@@ -279,7 +304,7 @@ class GameEngine:
             for idx in ranked[1:]:
                 if tally[idx] < top_score:
                     return idx
-            # Fallback (everyone tied) → pick the second in ranking
+            # Fallback (everyone tied) -> pick the second in ranking
             return ranked[1] if len(ranked) > 1 else ranked[0]
 
         if strat == Strategy.HOST_CHOICE:
@@ -339,6 +364,8 @@ class GameEngine:
             "subtitle": self.story.get("subtitle"),
             "round_index": self.current_round_index,
             "total_rounds": len(self.rounds),
+            "round_duration_s": self.round_duration_s,
+            "game_has_started": self.game_has_started(),
             "round": r.to_host_dict() if r else None,
             "all_rounds_summary": [
                 {
@@ -351,6 +378,7 @@ class GameEngine:
                 for rr in self.rounds
             ],
             "final_story": self.rendered_story() if self.phase == GamePhase.FINAL else None,
+            "final_story_segments": self.rendered_story_segments() if self.phase == GamePhase.FINAL else None,
             "story_template": self.story.get("story_template"),
             "narrator_intro": self.story.get("narrator_intro"),
         }
@@ -445,6 +473,7 @@ class GameEngine:
             "version": self.version,
             "phase": self.phase.value,
             "current_round_index": self.current_round_index,
+            "round_duration_s": self.round_duration_s,
             "rounds": [
                 {
                     "id": r.id,
@@ -454,7 +483,6 @@ class GameEngine:
                     "closes_at": r.closes_at,
                     "winning_index": r.winning_index,
                     "host_override_index": r.host_override_index,
-                    "strategy": r.strategy.value,
                 }
                 for r in self.rounds
             ],
@@ -465,6 +493,8 @@ class GameEngine:
             self.version = int(snap.get("version", 0))
             self.phase = GamePhase(snap.get("phase", "waiting"))
             self.current_round_index = int(snap.get("current_round_index", 0))
+            if "round_duration_s" in snap:
+                self.round_duration_s = int(snap["round_duration_s"])
             for r, saved in zip(self.rounds, snap.get("rounds", [])):
                 r.votes = {str(k): int(v) for k, v in saved.get("votes", {}).items()}
                 r.vote_history = [(float(t), int(i)) for t, i in saved.get("vote_history", [])]
@@ -472,8 +502,10 @@ class GameEngine:
                 r.closes_at = saved.get("closes_at")
                 r.winning_index = saved.get("winning_index")
                 r.host_override_index = saved.get("host_override_index")
-                if saved.get("strategy"):
-                    r.strategy = Strategy(saved["strategy"])
+                # NOTE: We intentionally do NOT restore r.strategy from the
+                # snapshot. The story JSON's strategy_rotation is the single
+                # source of truth. Restoring from a stale snapshot would
+                # overwrite the correct rotation (e.g. story1's all-most_popular).
         except Exception:
             # If snapshot is corrupt, start fresh rather than crash
             self.reset()

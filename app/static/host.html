@@ -34,11 +34,12 @@
   h3 { color: var(--accent); margin: 1rem 0 0.5rem; font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }
 
   .strategy-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-  select, input[type=number] {
+  select, input[type=number], input[type=range] {
     background: var(--white); color: var(--ink);
     border: 2px solid var(--border-strong); border-radius: 0;
     padding: 0.5rem 0.7rem; font-family: var(--sans);
   }
+  input[type=range] { padding: 0; border: none; vertical-align: middle; }
 
   .override-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
   .override-btns button {
@@ -71,6 +72,55 @@
     padding: 0.8rem; background: var(--neutral-50); border: 1px solid var(--border); border-radius: 0;
   }
   .story-preview p { margin: 0.4rem 0; }
+
+  /* ---------- setup bar ---------- */
+  .setup-bar {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+    padding: 0.8rem 1rem; margin-bottom: 1rem;
+    background: var(--neutral-50); border: 2px solid var(--accent-2);
+  }
+  .setup-bar label { font-weight: 700; font-size: 0.85rem; color: var(--ink); }
+  .setup-bar .setup-group { display: flex; align-items: center; gap: 0.5rem; }
+  .setup-bar .locked {
+    opacity: 0.5; pointer-events: none;
+  }
+  .setup-bar .lock-msg {
+    font-size: 0.75rem; color: var(--ink-dim); font-style: italic;
+  }
+
+  /* ---------- story modal ---------- */
+  .story-modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.6);
+    justify-content: center; align-items: center;
+  }
+  .story-modal-overlay.open { display: flex; }
+  .story-modal {
+    background: var(--white); max-width: 760px; width: 92vw;
+    max-height: 85vh; display: flex; flex-direction: column;
+    border: 3px solid var(--accent); box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  }
+  .story-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.8rem 1.2rem; border-bottom: 2px solid var(--border);
+    background: var(--neutral-50);
+  }
+  .story-modal-header h2 { margin: 0; font-size: 1.1rem; color: var(--accent); }
+  .story-modal-close {
+    background: none; border: 2px solid var(--border-strong); cursor: pointer;
+    font-size: 1.2rem; color: var(--ink-dim); padding: 0.2rem 0.6rem;
+    font-family: var(--sans);
+  }
+  .story-modal-close:hover { border-color: var(--red); color: var(--red); }
+  .story-modal-body {
+    padding: 1.2rem 1.5rem; overflow-y: auto; flex: 1;
+    font-family: var(--serif); font-size: 1.15rem; line-height: 1.7;
+    color: var(--ink);
+  }
+  .story-modal-body p { margin: 0.6rem 0; }
+  .story-modal-body .hl { color: var(--accent); font-weight: 700; }
+  .story-modal-body .char { color: var(--accent); font-style: italic; }
 </style>
 </head>
 <body>
@@ -79,13 +129,25 @@
     <form action="/host/logout" method="post" style="margin:0;"><button class="logout btn ghost" type="submit">logout</button></form>
   </div>
 
-  <div id="root">Connecting…</div>
+  <div id="root">Connecting...</div>
+
+  <!-- Story popup: lives OUTSIDE root so it survives re-renders -->
+  <div class="story-modal-overlay" id="story-modal-overlay">
+    <div class="story-modal">
+      <div class="story-modal-header">
+        <h2 id="story-modal-title">✦ The Tale is Told ✦</h2>
+        <button class="story-modal-close" onclick="window.__closeStoryModal()">✕ Close</button>
+      </div>
+      <div class="story-modal-body" id="story-modal-body"></div>
+    </div>
+  </div>
 
 <script>
 (() => {
   const root = document.getElementById('root');
   let state = null;
   let ws;
+  let storyModalPopulated = false;  // track whether modal has been filled
 
   const STRATEGIES = [
     ['most_popular', 'Most Popular'],
@@ -115,20 +177,119 @@
     ws.send(JSON.stringify({ cmd: c, ...extra }));
   }
 
+  // ---------- story modal ----------
+
+  window.__openStoryModal = function() {
+    populateStoryModal();
+    document.getElementById('story-modal-overlay').classList.add('open');
+  };
+  window.__closeStoryModal = function() {
+    document.getElementById('story-modal-overlay').classList.remove('open');
+  };
+  // Close on overlay click (outside modal)
+  document.getElementById('story-modal-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) window.__closeStoryModal();
+  });
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.__closeStoryModal();
+  });
+
+  function populateStoryModal() {
+    const body = document.getElementById('story-modal-body');
+    if (!body || !state) return;
+
+    // Update modal title to the current story's title
+    const titleEl = document.getElementById('story-modal-title');
+    if (titleEl && state.title) {
+      titleEl.textContent = '\u2726 ' + state.title + ' \u2726';
+    }
+
+    // In FINAL phase with rich segments available, use those (full highlighting)
+    if (state.phase === 'final' && state.final_story_segments) {
+      if (storyModalPopulated) return;  // preserve scroll in final phase
+      body.innerHTML = state.final_story_segments.map(paragraph => {
+        const inner = paragraph.map(seg => {
+          if (seg.hl) return `<span class="hl">${escapeHtml(seg.text)}</span>`;
+          if (seg.char) return `<span class="char">${escapeHtml(seg.text)}</span>`;
+          return escapeHtml(seg.text);
+        }).join('');
+        return `<p>${inner}</p>`;
+      }).join('');
+      storyModalPopulated = true;
+      return;
+    }
+
+    // Before FINAL: build from story_template + slot values from rounds
+    const tpl = state.story_template || [];
+    if (!tpl.length) { body.innerHTML = '<p style="color:var(--ink-dim);">No story template loaded.</p>'; return; }
+    const slotValues = {};
+    (state.all_rounds_summary || []).forEach(row => {
+      if (row.winning_word) slotValues[row.story_slot] = row.winning_word;
+    });
+    body.innerHTML = tpl.map(p => {
+      let out = escapeHtml(p);
+      for (const [slot, val] of Object.entries(slotValues)) {
+        out = out.replaceAll('{' + slot + '}', `<span class="hl">${escapeHtml(val)}</span>`);
+      }
+      out = out.replace(/\{([A-Z_]+)\}/g, '<span style="color: var(--ink-dim); font-style: italic;">[$1]</span>');
+      return `<p>${out}</p>`;
+    }).join('');
+  }
+
+  // ---------- render ----------
+
   function render() {
-    if (!state) { root.innerHTML = 'Connecting…'; return; }
+    if (!state) { root.innerHTML = 'Connecting...'; return; }
     const r = state.round;
+    const locked = state.game_has_started;
+
+    // Reset modal flag when leaving final phase (e.g. after reset or story switch)
+    if (state.phase !== 'final') {
+      storyModalPopulated = false;
+    }
+
+    // Auto-open story modal on final phase
+    if (state.phase === 'final' && state.final_story_segments) {
+      populateStoryModal();
+      if (!document.getElementById('story-modal-overlay').classList.contains('open')) {
+        window.__openStoryModal();
+      }
+    }
 
     const phaseCls = state.phase;
     const phaseLabel = state.phase.toUpperCase();
 
     const canStart    = state.phase === 'waiting';
     const canEnd      = state.phase === 'voting';
-    const canReveal   = state.phase === 'voting' || state.phase === 'revealed';  // can re-reveal too
+    const canReveal   = state.phase === 'voting' || state.phase === 'revealed';
     const canNext     = state.phase === 'revealed';
     const canFinal    = state.round_index >= state.total_rounds - 1 && state.phase === 'revealed';
 
+    // Available stories
+    const storiesHtml = (state.available_stories || []).map(s =>
+      `<option value="${s.key}" ${s.key === state.story_key ? 'selected' : ''}>${escapeHtml(s.title)} (${s.num_rounds} rounds)</option>`
+    ).join('');
+
+    const durationVal = state.round_duration_s || 15;
+
     root.innerHTML = `
+      <div class="setup-bar ${locked ? 'locked' : ''}">
+        <div class="setup-group">
+          <label>Story:</label>
+          <select id="story-select" ${locked ? 'disabled' : ''} onchange="window.__selectStory(this.value)">
+            ${storiesHtml}
+          </select>
+        </div>
+        <div class="setup-group">
+          <label>Round duration:</label>
+          <input type="range" id="duration-slider" min="5" max="60" step="5" value="${durationVal}" ${locked ? 'disabled' : ''}
+            oninput="document.getElementById('duration-label').textContent = this.value + 's'; window.__setDuration(this.value);">
+          <span id="duration-label" class="mono" style="min-width: 2.5rem;">${durationVal}s</span>
+        </div>
+        ${locked ? '<span class="lock-msg">Locked (game in progress; reset to change)</span>' : ''}
+      </div>
+
       <div class="grid">
 
         <div class="card">
@@ -179,12 +340,14 @@
             </div>
             <div class="controls">
               <button class="btn" onclick="window.__cmd('show_final')">Show Final Story</button>
+              <button class="btn" onclick="window.__openStoryModal()">📖 Read Story</button>
               <button class="btn danger" onclick="if(confirm('Reset the entire game? All votes lost.')) window.__cmd('reset')">Reset Game</button>
             </div>
           ` : `
             <h3>All rounds complete</h3>
             <div class="controls">
               <button class="btn primary" onclick="window.__cmd('show_final')">Show Final Story</button>
+              <button class="btn" onclick="window.__openStoryModal()">📖 Read Story</button>
               <button class="btn danger" onclick="if(confirm('Reset the entire game?')) window.__cmd('reset')">Reset Game</button>
             </div>
           `}
@@ -224,6 +387,22 @@
     };
   }
 
+  // ---------- setup commands ----------
+
+  let _durationDebounce = null;
+  window.__selectStory = function(key) {
+    cmd('select_story', { story_key: key });
+  };
+  window.__setDuration = function(val) {
+    // Debounce slider changes to avoid flooding the server
+    clearTimeout(_durationDebounce);
+    _durationDebounce = setTimeout(() => {
+      cmd('set_duration', { seconds: parseInt(val, 10) });
+    }, 300);
+  };
+
+  // ---------- bar chart ----------
+
   function renderBars(host, r) {
     const max = Math.max(1, ...r.tally);
     host.innerHTML = r.options.map((opt, i) => {
@@ -237,6 +416,8 @@
         </div>`;
     }).join('');
   }
+
+  // ---------- story preview ----------
 
   function renderStoryPreview() {
     const el = document.getElementById('story-preview');
@@ -257,6 +438,8 @@
     }).join('');
     el.innerHTML = html;
   }
+
+  // ---------- utils ----------
 
   function escapeHtml(s) {
     return (s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));

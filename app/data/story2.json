@@ -1,7 +1,7 @@
 {
   "title": "The Quest for the Lost Talk",
-  "subtitle": "A PyConDE 2026 Saga",
-  "narrator_intro": "Tonight, we gather round the scrying pool to consult the audience. Twelve questions. One fate. Let the tale be told.",
+  "subtitle": "A PyConDE 2026 Saga, Chapter II",
+  "narrator_intro": "You thought yesterday was the end? The scrying pool stirs once more. Ten questions. One fate. You know the game now, but do you know who truly decides? Let the tale be told.",
   "strategy_rotation": [
     "most_popular",
     "least_popular",
@@ -12,16 +12,14 @@
     "most_popular",
     "random",
     "least_popular",
-    "second_place",
-    "host_choice",
-    "most_popular"
+    "second_place"
   ],
   "rounds": [
     {
       "id": 1,
-      "format": "standard",
-      "poll_question": "Pick an ADJECTIVE to describe a heroic PyConista",
-      "category_label": "ADJECTIVE",
+      "format": "misleading_poll",
+      "poll_question": "How would you describe your mood right now?",
+      "category_label": "MOOD CHECK",
       "story_slot": "HERO_ADJECTIVE",
       "options": [
         "sleep-deprived",
@@ -92,21 +90,6 @@
     },
     {
       "id": 6,
-      "format": "standard",
-      "poll_question": "Pick a SILLY WORD",
-      "category_label": "SILLY WORD",
-      "story_slot": "WAR_CHANT",
-      "options": [
-        "Bamboozle!",
-        "Kerfuffle!",
-        "Yodel!",
-        "Boop!",
-        "Flabbergast!",
-        "Whoopsie-daisy!"
-      ]
-    },
-    {
-      "id": 7,
       "format": "misleading_poll",
       "poll_question": "Best conference fuel?",
       "category_label": "FUEL",
@@ -121,22 +104,7 @@
       ]
     },
     {
-      "id": 8,
-      "format": "standard",
-      "poll_question": "Pick a NUMBER",
-      "category_label": "NUMBER",
-      "story_slot": "ENEMY_COUNT",
-      "options": [
-        "three",
-        "seven",
-        "forty-two",
-        "one hundred",
-        "nine thousand",
-        "minus one"
-      ]
-    },
-    {
-      "id": 9,
+      "id": 7,
       "format": "misleading_poll",
       "poll_question": "What do you mass-delete on Fridays?",
       "category_label": "FRIDAY RITUAL",
@@ -151,10 +119,10 @@
       ]
     },
     {
-      "id": 10,
-      "format": "standard",
-      "poll_question": "Pick a PROP for our hero to carry",
-      "category_label": "PROP",
+      "id": 8,
+      "format": "misleading_poll",
+      "poll_question": "What's your most useless desk item?",
+      "category_label": "DESK CLUTTER",
       "story_slot": "RELIC",
       "options": [
         "a rubber duck",
@@ -166,7 +134,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 9,
       "format": "misleading_poll",
       "poll_question": "Your deployment ritual?",
       "category_label": "DEPLOY MOVE",
@@ -181,10 +149,10 @@
       ]
     },
     {
-      "id": 12,
-      "format": "standard",
-      "poll_question": "Pick a VICTORY EMOTE",
-      "category_label": "VICTORY EMOTE",
+      "id": 10,
+      "format": "misleading_poll",
+      "poll_question": "How do you celebrate a successful deploy?",
+      "category_label": "CELEBRATION",
       "story_slot": "VICTORY_DANCE",
       "options": [
         "the floss",
@@ -197,34 +165,39 @@
     }
   ],
   "story_template": [
-    "Once upon a Lightning Talk session at PyConDE 26, a {HERO_ADJECTIVE} PyConista awoke in their hotel room to a horror beyond reckoning: their slides had vanished.",
-    "Desperate and determined, they mounted their trusty {MOUNT}, the fastest steed in all the Pythonic Wastes, and set forth on a quest, raising a fist to the sky and bellowing '{BATTLE_CRY}' as their war cry. At the crossroads, Johannes the Cartographer squinted at a crinkled map, pointed vaguely north, and wished them luck.",
+    "The morning after the Great Wi-Fi Incident, a {HERO_ADJECTIVE} PyConista burst into the main hall, wild-eyed and panicked. The mysterious message from yesterday had come true: their slides had vanished. Not misplaced, not deleted, but spirited away by the same dark enchantment that had cursed the router. Johannes the Volunteer Whiplasher cracked an invisible whip at a passing volunteer: 'Don't just stand there! Yesterday it was the Wi-Fi. Today it is the slides. The clock is ticking!'",
+    "Desperate and determined, the PyConista mounted their trusty {MOUNT}, the fastest steed in all the Pythonic Wastes, and set forth on a quest, raising a fist to the sky and bellowing '{BATTLE_CRY}' as their war cry. At the crossroads, Johannes the Timekeeper glanced at his watch, adjusted it, and declared with devastating precision: 'You have twenty-three minutes and forty-one seconds. I would not waste them standing here.'",
     "Deep in the Cave of Legacy Code, guarded by Sebastian the Dark Archivist, they came face to face with a hideous {MONSTER}. The beast hissed and snarled. Our hero raised their staff and cast a devastating spell of {MAGIC_SPELL}, and the monster reeled, but it was not enough.",
-    "With a final war-chant of '{WAR_CHANT}', our hero drew their mighty {WEAPON} and charged, felling exactly {ENEMY_COUNT} shadow-minions in a single swing, while Valerio the Chance Caster rolled his enchanted dice and whispered 'determinism is for compilers'.",
-    "At the summit of the Mountain of Merge Conflicts, Paula the Chromamancer blessed the path in shades of grey, and our hero unearthed the legendary hoard of {TREASURE}, clutching tight their most prized relic: {RELIC}. But first, at the Bridge of Broken Builds, Alex H. Potter, known across the realm as Alex the Wizard, planted his staff, faced down a shadow of corrupted commits, and thundered 'YOU SHALL NOT PASS… this PR without a code review!'",
-    "And when the Final Boss emerged from the Keep of the Dark Archivist, breath reeking of unmerged pull requests, Lisa the Timekeeper raised a glowing hourglass and cried 'you have exactly one lightning talk's worth of time!' Our hero's strategy was clear. They would, quite simply, {FINAL_MOVE}.",
+    "Our hero drew their mighty {WEAPON} and charged headlong into the fray, while Valerio the Chance Caster rolled his enchanted dice and whispered 'determinism is for compilers'.",
+    "At the summit of the Mountain of Merge Conflicts, Paula the Chromamancer blessed the path in shades of grey, and our hero unearthed the legendary hoard of {TREASURE}, clutching tight their most prized relic: {RELIC}. At the Bridge of Broken Builds, Alex H. Potter, known across the realms of Django Girls as Alex the Wizard, planted his staff, faced down a shadow of corrupted commits, and thundered 'YOU SHALL NOT PASS... this PR without a code review!'",
+    "When the Final Boss emerged from the Keep of the Dark Archivist, breath reeking of unmerged pull requests, Lisa, Leader of Team Other, stepped forward. 'You do not frighten me,' she said coolly. 'I once volunteered for a team and ended up leading it. They called it Other. And yet, here we are.'",
+    "Lisa the Torchbearer of PyLadies raised a blazing torch and rallied the crowd: 'PyLadies! Django Girls! Lend me your strength!' Our hero felt the surge of collective power and knew their strategy. They would, quite simply, {FINAL_MOVE}.",
     "It worked. (Somehow.) The slides were recovered. Peace returned to the land of PyConDE. The crowd roared, and our victorious hero celebrated with {VICTORY_DANCE}, while Florian the Wordsmith nodded and whispered: 'the best spells are the ones nobody sees coming.'",
     "The End."
   ],
   "highlighted_characters": [
     "Sebastian the Dark Archivist",
-    "Johannes the Cartographer",
+    "Johannes the Timekeeper",
+    "Johannes the Volunteer Whiplasher",
     "Valerio the Chance Caster",
     "Paula the Chromamancer",
     "Alex H. Potter",
     "Alex the Wizard",
-    "Lisa the Timekeeper",
+    "Lisa, Leader of Team Other",
+    "Lisa the Torchbearer of PyLadies",
     "Florian the Wordsmith"
   ],
   "credits": {
     "inspired_by": "The Mystery Constraint Cards universe",
     "fantasy_personas_cameo": [
       "Sebastian the Dark Archivist",
-      "Johannes the Cartographer",
+      "Johannes the Timekeeper",
+      "Johannes the Volunteer Whiplasher",
       "Valerio the Chance Caster",
       "Paula the Chromamancer",
       "Alex H. Potter, a.k.a. Alex the Wizard",
-      "Lisa the Timekeeper",
+      "Lisa, Leader of Team Other",
+      "Lisa the Torchbearer of PyLadies",
       "Florian the Wordsmith"
     ]
   }

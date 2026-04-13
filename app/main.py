@@ -8,8 +8,8 @@ Run locally:
 
 Env vars (see README):
     HOST_PASSWORD   : password for the host dashboard (default: "pyconde2026")
-    STORY_FILE      : path to the story.json (default: app/data/story.json)
-    ROUND_DURATION  : seconds per voting round (default: 30)
+    DEFAULT_STORY   : story key to load on startup (default: "story1")
+    ROUND_DURATION  : seconds per voting round (default: 15)
     SNAPSHOT_FILE   : path for state snapshot persistence (default: /tmp/scrying_snapshot.json)
     PUBLIC_URL      : public URL for QR code on the big screen (default: http://localhost:8000)
 """
@@ -34,11 +34,11 @@ from .game import GameEngine, Strategy, GamePhase
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
-DEFAULT_STORY = BASE_DIR / "data" / "story.json"
+DATA_DIR = BASE_DIR / "data"
 
 HOST_PASSWORD = os.environ.get("HOST_PASSWORD", "pyconde2026")
-STORY_FILE = Path(os.environ.get("STORY_FILE", str(DEFAULT_STORY)))
-ROUND_DURATION = int(os.environ.get("ROUND_DURATION", "30"))
+DEFAULT_STORY_KEY = os.environ.get("DEFAULT_STORY", "story1")
+ROUND_DURATION = int(os.environ.get("ROUND_DURATION", "15"))
 SNAPSHOT_FILE = Path(os.environ.get("SNAPSHOT_FILE", "/tmp/scrying_snapshot.json"))
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8000")
 
@@ -46,9 +46,25 @@ PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8000")
 _host_tokens: set[str] = set()
 
 
+# ------------------------------------------------------------------ story catalogue
+
+def _load_stories() -> dict[str, dict]:
+    """Load all story*.json files from the data directory."""
+    catalogue: dict[str, dict] = {}
+    for p in sorted(DATA_DIR.glob("story*.json")):
+        key = p.stem  # "story1", "story2"
+        with p.open("r", encoding="utf-8") as f:
+            catalogue[key] = json.load(f)
+    return catalogue
+
+
+stories = _load_stories()
+current_story_key: str = DEFAULT_STORY_KEY if DEFAULT_STORY_KEY in stories else next(iter(stories))
+
+
 # ------------------------------------------------------------------ engine + hub
 
-engine = GameEngine(story_path=STORY_FILE, round_duration_s=ROUND_DURATION)
+engine = GameEngine(story=stories[current_story_key], round_duration_s=ROUND_DURATION)
 
 
 BROADCAST_INTERVAL_S = 0.25  # coalesce state updates to at most 4 Hz during voting
@@ -95,7 +111,7 @@ class ConnectionHub:
         transitions so the host controls feel instant."""
         self._dirty.clear()
         public_bytes = json.dumps({"type": "state", "data": engine.public_state()})
-        host_bytes = json.dumps({"type": "state", "data": engine.host_state()})
+        host_bytes = json.dumps({"type": "state", "data": _host_state_with_meta()})
         await asyncio.gather(
             self._send_to_set(self.audience, public_bytes),
             self._send_to_set(self.screen, public_bytes),
@@ -133,25 +149,50 @@ class ConnectionHub:
 hub = ConnectionHub()
 
 
+# ------------------------------------------------------------------ host state enrichment
+
+def _host_state_with_meta() -> dict[str, Any]:
+    """Wrap engine.host_state() with server-level metadata the host UI needs."""
+    data = engine.host_state()
+    data["story_key"] = current_story_key
+    data["available_stories"] = [
+        {
+            "key": k,
+            "title": s.get("title", k),
+            "num_rounds": len(s.get("rounds", [])),
+        }
+        for k, s in stories.items()
+    ]
+    return data
+
+
 # ------------------------------------------------------------------ snapshot persistence
 
 def save_snapshot() -> None:
     try:
         SNAPSHOT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        snap = engine.snapshot()
+        snap["story_key"] = current_story_key
         with SNAPSHOT_FILE.open("w", encoding="utf-8") as f:
-            json.dump(engine.snapshot(), f)
+            json.dump(snap, f)
     except Exception as e:
         print(f"[snapshot] save failed: {e}")
 
 
 def load_snapshot() -> None:
+    global current_story_key
     if not SNAPSHOT_FILE.exists():
         return
     try:
         with SNAPSHOT_FILE.open("r", encoding="utf-8") as f:
             snap = json.load(f)
+        # Restore the story selection first, then the engine state
+        saved_key = snap.get("story_key", current_story_key)
+        if saved_key in stories and saved_key != current_story_key:
+            current_story_key = saved_key
+            engine.switch_story(stories[saved_key])
         engine.restore(snap)
-        print(f"[snapshot] restored from {SNAPSHOT_FILE} (round {engine.current_round_index}, phase {engine.phase.value})")
+        print(f"[snapshot] restored from {SNAPSHOT_FILE} (story={current_story_key}, round {engine.current_round_index}, phase {engine.phase.value})")
     except Exception as e:
         print(f"[snapshot] load failed: {e}")
 
@@ -249,7 +290,7 @@ async def host_logout(scrying_host: str | None = Cookie(default=None)) -> Respon
 
 @app.get("/healthz")
 async def healthz() -> dict[str, Any]:
-    return {"ok": True, "phase": engine.phase.value, "round": engine.current_round_index, "version": engine.version}
+    return {"ok": True, "phase": engine.phase.value, "round": engine.current_round_index, "version": engine.version, "story": current_story_key}
 
 
 # ------------------------------------------------------------------ WebSocket endpoints
@@ -295,6 +336,8 @@ async def ws_screen(ws: WebSocket) -> None:
 
 @app.websocket("/ws/host")
 async def ws_host(ws: WebSocket) -> None:
+    global current_story_key
+
     # Authenticate via cookie sent during WS handshake
     token = None
     cookie_header = ws.headers.get("cookie", "")
@@ -308,7 +351,7 @@ async def ws_host(ws: WebSocket) -> None:
 
     await hub.connect(ws, "host")
     try:
-        await ws.send_text(json.dumps({"type": "state", "data": engine.host_state()}))
+        await ws.send_text(json.dumps({"type": "state", "data": _host_state_with_meta()}))
         while True:
             msg = await ws.receive_json()
             cmd = msg.get("cmd")
@@ -334,7 +377,18 @@ async def ws_host(ws: WebSocket) -> None:
                         engine.override_strategy(Strategy(strat))
                     except ValueError:
                         pass
-            # Host commands are phase transitions → broadcast immediately
+            elif cmd == "select_story":
+                # Only allowed before the game has started
+                key = msg.get("story_key")
+                if key and key in stories and not engine.game_has_started():
+                    current_story_key = key
+                    engine.switch_story(stories[key])
+            elif cmd == "set_duration":
+                # Only allowed before the game has started
+                if not engine.game_has_started():
+                    secs = int(msg.get("seconds", 15))
+                    engine.round_duration_s = max(5, min(60, secs))
+            # Host commands are phase transitions -> broadcast immediately
             # (no coalescing delay) and persist to disk so a mid-session
             # restart resumes in the right place.
             await hub.broadcast_now()
